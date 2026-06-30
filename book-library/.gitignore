@@ -1,0 +1,21 @@
+# Build output
+/target/
+*.class
+
+# IDE files
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local-only secrets — never commit real credentials.
+# If you create one of these to store real values locally, it stays
+# out of Git entirely.
+application-local.properties
+.env

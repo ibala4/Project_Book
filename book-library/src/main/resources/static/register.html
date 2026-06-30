@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create account — Shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFFBF5;
+    --charcoal: #262220;
+    --charcoal-soft: #5C5550;
+    --orange: #D2691E;
+    --orange-dark: #B5571A;
+    --sage: #7A9B76;
+    --sage-bg: #EEF3EC;
+    --rose: #C1666B;
+    --rose-bg: #FAEDEE;
+    --line: #E8DCC8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--cream);
+    font-family: 'Inter', sans-serif;
+    color: var(--charcoal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 50px rgba(38,34,32,0.08);
+  }
+  h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.8rem; margin: 0 0 4px; }
+  p.sub { color: var(--charcoal-soft); font-size: 0.88rem; margin: 0 0 26px; }
+
+  .field { margin-bottom: 15px; }
+  .field label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--charcoal-soft); margin-bottom: 5px; }
+  .field input {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 11px 13px;
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+  }
+  .field input:focus { outline: none; border-color: var(--orange); }
+  .field .err { color: var(--rose); font-size: 0.74rem; margin-top: 4px; min-height: 14px; }
+
+  .btn {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 12px 0;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    background: var(--orange);
+    color: #fff;
+    margin-top: 6px;
+  }
+  .btn:hover { background: var(--orange-dark); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .alert {
+    font-size: 0.84rem;
+    padding: 10px 14px;
+    border-radius: 9px;
+    margin-bottom: 18px;
+    display: none;
+  }
+  .alert.show { display: block; }
+  .alert.error { background: var(--rose-bg); color: #8C3A3F; }
+  .alert.success { background: var(--sage-bg); color: #3F5C3B; }
+
+  .switch { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--charcoal-soft); }
+  .switch a { color: var(--orange); font-weight: 600; text-decoration: none; }
+  .switch a:hover { text-decoration: underline; }
+
+  :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Create your account</h1>
+  <p class="sub">Sign up to start browsing the shelf.</p>
+
+  <div class="alert" id="alertBox"></div>
+
+  <form id="registerForm" novalidate>
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" required>
+      <div class="err" id="err-name"></div>
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+      <div class="err" id="err-email"></div>
+    </div>
+    <div class="field">
+      <label for="age">Age</label>
+      <input type="number" id="age" required min="0">
+      <div class="err" id="err-age"></div>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" required minlength="6">
+      <div class="err" id="err-password"></div>
+    </div>
+    <div class="field">
+      <label for="confirmPassword">Confirm password</label>
+      <input type="password" id="confirmPassword" required minlength="6">
+      <div class="err" id="err-confirmPassword"></div>
+    </div>
+    <button type="submit" class="btn" id="submitBtn" disabled>Create account</button>
+  </form>
+
+  <p class="switch">Already have an account? <a href="/login.html">Log in</a></p>
+</div>
+
+<script>
+  // Check if user is already logged in — if so, redirect to the shelf
+  (function() {
+    console.log('Register page: checking session...');
+    fetch('/api/auth/me', { cache: 'no-store' }).then(function(res) {
+      if (res.status === 200) {
+        console.log('✓ User is already logged in, redirecting to shelf...');
+        window.location.replace('/index.html');
+      } else if (res.status === 401) {
+        console.log('✓ User is not logged in, showing register form');
+        // User is not logged in — continue showing this page
+      }
+    }).catch(function(err) {
+      console.error('Session check failed:', err.message);
+    });
+  })();
+
+  const form = document.getElementById('registerForm');
+  const alertBox = document.getElementById('alertBox');
+  const submitBtn = document.getElementById('submitBtn');
+  const passwordInput = document.getElementById('password');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = 'alert show ' + type;
+  }
+
+  function clearErrors() {
+    document.querySelectorAll('.err').forEach(e => e.textContent = '');
+    alertBox.classList.remove('show');
+  }
+
+  // Live check: as soon as both password fields have content, verify they
+  // match and enable/disable the submit button accordingly. This catches
+  // typos before the user even tries to submit.
+  function checkPasswordsMatch() {
+    const pwd = passwordInput.value;
+    const confirm = confirmPasswordInput.value;
+    const errEl = document.getElementById('err-confirmPassword');
+
+    if (confirm.length === 0) {
+      errEl.textContent = '';
+      submitBtn.disabled = true;
+      return false;
+    }
+    if (pwd !== confirm) {
+      errEl.textContent = 'Passwords do not match.';
+      submitBtn.disabled = true;
+      return false;
+    }
+    if (pwd.length < 6) {
+      errEl.textContent = '';
+      submitBtn.disabled = true;
+      return false;
+    }
+    errEl.textContent = '';
+    submitBtn.disabled = false;
+    return true;
+  }
+
+  passwordInput.addEventListener('input', checkPasswordsMatch);
+  confirmPasswordInput.addEventListener('input', checkPasswordsMatch);
+
+  function validate(data) {
+    const errors = {};
+
+    if (!data.name.trim()) {
+      errors.name = 'Name is required.';
+    }
+
+    if (!data.email.trim()) {
+      errors.email = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      errors.email = 'Enter a valid email address (e.g. name@example.com).';
+    }
+
+    if (data.age === '' || Number(data.age) < 0) {
+      errors.age = 'Enter a valid age.';
+    }
+
+    if (!data.password) {
+      errors.password = 'Password is required.';
+    } else if (data.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters.';
+    }
+
+    if (!data.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password.';
+    } else if (data.password !== data.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match.';
+    }
+
+    return errors;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    const data = {
+      name: document.getElementById('name').value,
+      email: document.getElementById('email').value,
+      age: document.getElementById('age').value,
+      password: document.getElementById('password').value,
+      confirmPassword: document.getElementById('confirmPassword').value
+    };
+
+    const errors = validate(data);
+    if (Object.keys(errors).length > 0) {
+      Object.entries(errors).forEach(([field, msg]) => {
+        const el = document.getElementById('err-' + field);
+        if (el) el.textContent = msg;
+      });
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account…';
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          age: Number(data.age),
+          password: data.password
+        })
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (body && body.errors) {
+          Object.entries(body.errors).forEach(([field, msg]) => {
+            const el = document.getElementById('err-' + field);
+            if (el) el.textContent = msg;
+          });
+        } else {
+          showAlert(body && body.message ? body.message : 'Could not create account.', 'error');
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+        return;
+      }
+
+      showAlert('Account created! Redirecting to login…', 'success');
+      setTimeout(() => { window.location.href = '/login.html'; }, 1200);
+    } catch (err) {
+      showAlert('Something went wrong — check the server console.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account';
+    }
+  });
+</script>
+</body>
+</html>

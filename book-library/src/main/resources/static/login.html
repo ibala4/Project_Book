@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — Shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFFBF5;
+    --charcoal: #262220;
+    --charcoal-soft: #5C5550;
+    --orange: #D2691E;
+    --orange-dark: #B5571A;
+    --rose: #C1666B;
+    --rose-bg: #FAEDEE;
+    --line: #E8DCC8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--cream);
+    font-family: 'Inter', sans-serif;
+    color: var(--charcoal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 50px rgba(38,34,32,0.08);
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.8rem;
+    margin: 0 0 4px;
+  }
+  p.sub { color: var(--charcoal-soft); font-size: 0.88rem; margin: 0 0 28px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--charcoal-soft); margin-bottom: 5px; }
+  .field input {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 11px 13px;
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+  }
+  .field input:focus { outline: none; border-color: var(--orange); }
+
+  .btn {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 12px 0;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    background: var(--orange);
+    color: #fff;
+    margin-top: 6px;
+  }
+  .btn:hover { background: var(--orange-dark); }
+
+  .alert {
+    background: var(--rose-bg);
+    color: #8C3A3F;
+    font-size: 0.84rem;
+    padding: 10px 14px;
+    border-radius: 9px;
+    margin-bottom: 18px;
+    display: none;
+  }
+  .alert.show { display: block; }
+
+  .switch { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--charcoal-soft); }
+  .switch a { color: var(--orange); font-weight: 600; text-decoration: none; }
+  .switch a:hover { text-decoration: underline; }
+
+  :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Welcome back</h1>
+  <p class="sub">Log in to browse the shelf.</p>
+
+  <div class="alert" id="errorAlert">Incorrect email or password. Please try again.</div>
+
+  <form id="loginForm" method="post" action="/api/auth/login">
+    <div class="field">
+      <label for="username">Email</label>
+      <input type="email" id="username" name="username" required autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn">Log in</button>
+  </form>
+
+  <p class="switch">No account yet? <a href="/register.html">Create one</a></p>
+</div>
+
+<script>
+  // Check if user is already logged in — if so, redirect to the shelf
+  // (logged-in users shouldn't see the login page)
+  (function() {
+    console.log('Login page: checking session...');
+    fetch('/api/auth/me', { cache: 'no-store' }).then(function(res) {
+      if (res.status === 200) {
+        console.log('✓ User is already logged in, redirecting to shelf...');
+        window.location.replace('/index.html');
+      } else if (res.status === 401) {
+        console.log('✓ User is not logged in, showing login form');
+        // User is not logged in — continue showing this page
+      }
+    }).catch(function(err) {
+      console.error('Session check failed:', err.message);
+      // If check fails, let user proceed with login form
+    });
+  })();
+
+  // Spring Security's form login redirects back to /login.html?error on
+  // failed attempts. We just check for that query param and show a message.
+  if (new URLSearchParams(window.location.search).has('error')) {
+    document.getElementById('errorAlert').classList.add('show');
+  }
+
+  // Chrome's back/forward cache (bfcache) can restore an old painted
+  // screenshot of a previous page when navigating via back/forward or
+  // certain refreshes, while leaving this page's URL in the address bar.
+  // The 'pageshow' event with persisted=true tells us that happened —
+  // force a real reload from the server so the content always matches
+  // the URL shown.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      console.log('Page restored from bfcache, reloading...');
+      window.location.reload();
+    }
+  });
+</script>
+</body>
+</html>

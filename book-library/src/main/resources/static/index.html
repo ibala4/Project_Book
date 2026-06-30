@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Shelf — Book Library</title>
+<script>
+  // Runs immediately, before the rest of the page even renders — even if
+  // this HTML shell itself was served from a stale browser cache. Makes a
+  // live, uncached request to check login status, and bounces to the login
+  // page right away if the session is actually gone. This is the earliest
+  // possible point to catch a stale-cache situation.
+  (function() {
+    fetch('/api/auth/me', { cache: 'no-store' }).then(function(res) {
+      if (res.status === 401) {
+        window.location.replace('/login.html');
+      }
+    }).catch(function() {
+      // If the check itself fails (e.g. server unreachable), let the page
+      // continue loading normally — the rest of the page's own error
+      // handling will surface a clearer message.
+    });
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFFBF5;
+    --cream-deep: #FAF3E8;
+    --charcoal: #262220;
+    --charcoal-soft: #5C5550;
+    --orange: #D2691E;
+    --orange-dark: #B5571A;
+    --sage: #7A9B76;
+    --sage-bg: #EEF3EC;
+    --rose: #C1666B;
+    --rose-bg: #FAEDEE;
+    --line: #E8DCC8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--cream);
+    font-family: 'Inter', sans-serif;
+    color: var(--charcoal);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .serif { font-family: 'Fraunces', serif; }
+
+  header.hero {
+    background: var(--charcoal);
+    color: var(--cream);
+    padding: 38px 40px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::before {
+    content: "";
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    background: var(--orange);
+    border-radius: 50%;
+    opacity: 0.15;
+  }
+  header.hero h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 2.4rem;
+    margin: 0 0 6px;
+    position: relative;
+  }
+  header.hero p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #D8CFC4;
+    position: relative;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 22px 40px;
+    background: var(--cream-deep);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .toolbar input, .toolbar select {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.86rem;
+    padding: 10px 14px;
+    border: 1.5px solid var(--line);
+    background: var(--cream);
+    color: var(--charcoal);
+    border-radius: 8px;
+  }
+  .toolbar input:focus, .toolbar select:focus {
+    outline: none;
+    border-color: var(--orange);
+  }
+
+  #search { flex: 1; min-width: 200px; }
+  .toolbar input::placeholder { color: #B5A98F; }
+
+  .btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.08s ease, background 0.12s ease;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-orange { background: var(--orange); color: #fff; }
+  .btn-orange:hover { background: var(--orange-dark); }
+
+  .btn-outline { background: transparent; border: 1.5px solid var(--charcoal); color: var(--charcoal); }
+  .btn-outline:hover { background: var(--charcoal); color: var(--cream); }
+
+  .status-line {
+    padding: 12px 40px;
+    font-size: 0.8rem;
+    color: var(--charcoal-soft);
+  }
+  .status-line.error { color: var(--rose); font-weight: 600; }
+
+  .shelf {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 26px;
+    padding: 10px 40px 60px;
+  }
+
+  .book-tile {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .book-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(38,34,32,0.12);
+  }
+
+  .spine {
+    height: 86px;
+    display: flex;
+    align-items: flex-end;
+    padding: 10px 16px;
+    position: relative;
+  }
+  .spine .num {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    background: rgba(0,0,0,0.18);
+    padding: 3px 9px;
+    border-radius: 100px;
+    position: absolute;
+    top: 10px;
+    left: 14px;
+  }
+  .spine .genre-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.92);
+  }
+
+  .tile-body { padding: 16px 16px 14px; flex: 1; display: flex; flex-direction: column; }
+
+  .tile-body h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.08rem;
+    margin: 0 0 4px;
+    line-height: 1.25;
+  }
+  .tile-body .author { font-size: 0.82rem; color: var(--charcoal-soft); margin: 0 0 12px; }
+
+  .stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 14px;
+    width: fit-content;
+  }
+  .stock-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .stock-badge.in-stock { background: var(--sage-bg); color: #3F5C3B; }
+  .stock-badge.in-stock::before { background: var(--sage); }
+  .stock-badge.out-of-stock { background: var(--rose-bg); color: #8C3A3F; }
+  .stock-badge.out-of-stock::before { background: var(--rose); }
+
+  .tile-meta { font-size: 0.74rem; color: var(--charcoal-soft); margin-bottom: 14px; }
+
+  .tile-actions { margin-top: auto; display: flex; gap: 8px; }
+  .tile-actions .btn { flex: 1; font-size: 0.8rem; padding: 9px 0; text-align: center; }
+  .tile-actions .icon-only { flex: 0 0 auto; padding: 9px 12px; }
+
+  .icon-btn-row { display: flex; gap: 6px; margin-top: 8px; }
+  .small-link {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: var(--charcoal-soft);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    text-decoration: underline;
+  }
+  .small-link:hover { color: var(--charcoal); }
+  .small-link.danger:hover { color: var(--rose); }
+
+  .empty-state { grid-column: 1 / -1; text-align: center; padding: 80px 20px; color: var(--charcoal-soft); }
+  .empty-state h2 { font-family: 'Fraunces', serif; font-size: 1.4rem; margin-bottom: 6px; color: var(--charcoal); }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(38,34,32,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .overlay.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px;
+    padding: 28px 28px 24px;
+    box-shadow: 0 24px 60px rgba(38,34,32,0.3);
+  }
+
+  .modal h2 { font-family: 'Fraunces', serif; font-size: 1.3rem; margin: 0 0 4px; }
+  .modal .modal-sub { font-size: 0.82rem; color: var(--charcoal-soft); margin: 0 0 18px; }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--charcoal-soft);
+    margin-bottom: 5px;
+  }
+  .field input {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+  }
+  .field input:focus { outline: none; border-color: var(--orange); }
+  .field .err { color: var(--rose); font-size: 0.74rem; margin-top: 4px; min-height: 14px; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { margin: 0; font-size: 0.86rem; color: var(--charcoal); font-weight: 400; }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--charcoal);
+    color: var(--cream);
+    padding: 13px 22px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    z-index: 200;
+    max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--rose); }
+  .toast.success { background: var(--sage); color: #1F2E1D; }
+
+  @media (max-width: 600px) {
+    header.hero, .toolbar, .shelf, .status-line { padding-left: 20px; padding-right: 20px; }
+  }
+
+  :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+  /* Ensure logout button is ALWAYS visible and clickable */
+  #logoutBtn {
+    display: inline-block !important;
+    visibility: visible !important;
+    z-index: 1000 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    background: transparent !important;
+    border: 1.5px solid #D8CFC4 !important;
+    color: #D8CFC4 !important;
+    padding: 7px 14px !important;
+    font-size: 0.78rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    transition: background 0.12s ease !important;
+  }
+  #logoutBtn:hover {
+    background: rgba(216, 207, 196, 0.15) !important;
+    color: #D8CFC4 !important;
+  }
+  #logoutBtn:active {
+    transform: scale(0.97) !important;
+  }
+  #logoutBtn:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+    <div>
+      <h1 class="serif">Shelf</h1>
+      <p>Browse the collection, manage stock, sell copies.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span id="userGreeting" style="font-size:0.85rem; color:#D8CFC4;"></span>
+      <button type="button" id="logoutBtn" class="btn btn-outline" style="background:transparent; border:1.5px solid #D8CFC4; color:#D8CFC4; padding:7px 14px; font-size:0.78rem;">Log out</button>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input type="text" id="search" placeholder="Search title or author…" autocomplete="off">
+  <select id="genreFilter"><option value="">All genres</option></select>
+  <select id="availFilter">
+    <option value="">All copies</option>
+    <option value="true">In stock only</option>
+  </select>
+  <button class="btn btn-outline" id="refreshBtn" type="button">Refresh</button>
+  <button class="btn btn-orange" id="addBtn" type="button">+ Add book</button>
+</div>
+
+<div class="status-line" id="statusLine">Loading shelf…</div>
+
+<div class="shelf" id="shelf"></div>
+
+<!-- Add / Edit modal -->
+<div class="overlay" id="overlay">
+  <form class="modal" id="bookForm" novalidate>
+    <h2 id="modalTitle">Add a book</h2>
+    <p class="modal-sub">Fill in the details for this title.</p>
+    <input type="hidden" id="bookId">
+
+    <div class="field">
+      <label for="title">Title</label>
+      <input type="text" id="title" required>
+      <div class="err" id="err-title"></div>
+    </div>
+
+    <div class="field">
+      <label for="author">Author</label>
+      <input type="text" id="author" required>
+      <div class="err" id="err-author"></div>
+    </div>
+
+    <div class="field">
+      <label for="genre">Genre</label>
+      <input type="text" id="genre" required>
+      <div class="err" id="err-genre"></div>
+    </div>
+
+    <div class="field">
+      <label for="publishedYear">Published year</label>
+      <input type="number" id="publishedYear" required min="0">
+      <div class="err" id="err-publishedYear"></div>
+    </div>
+
+    <div class="field">
+      <label for="copies">Copies in stock</label>
+      <input type="number" id="copies" required min="0" value="1">
+      <div class="err" id="err-copies"></div>
+    </div>
+
+    <div class="field">
+      <label for="minAge">Maximum reader age (0 = no restriction)</label>
+      <input type="number" id="minAge" required min="0" value="0">
+      <div class="err" id="err-minAge"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn btn-orange" id="saveBtn">Save</button>
+    </div>
+  </form>
+</div>
+
+<!-- Purchase modal -->
+<div class="overlay" id="purchaseOverlay">
+  <form class="modal" id="purchaseForm" novalidate>
+    <div id="purchaseStepDetails">
+      <h2 class="serif" id="purchaseTitle">Buy this book</h2>
+      <p class="modal-sub" id="purchaseSub"></p>
+      <input type="hidden" id="purchaseBookId">
+
+      <div class="field">
+        <label for="buyerName">Your name</label>
+        <input type="text" id="buyerName" required>
+        <div class="err" id="err-buyerName"></div>
+      </div>
+
+      <div class="field">
+        <label for="buyerEmail">Your email</label>
+        <input type="email" id="buyerEmail" required>
+        <div class="err" id="err-buyerEmail"></div>
+      </div>
+
+      <div class="field">
+        <label for="quantity">Quantity</label>
+        <input type="number" id="quantity" required min="1" value="1">
+        <div class="err" id="err-quantity"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="purchaseCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-orange" id="purchaseSaveBtn">Continue</button>
+      </div>
+    </div>
+
+    <div id="purchaseStepConfirmEmail" style="display:none;">
+      <h2 class="serif">Send receipt to this email?</h2>
+      <p class="modal-sub">We'll email your purchase confirmation to:</p>
+      <p style="font-weight:600; font-size:1.05rem; margin:0 0 20px; padding:12px 14px; background:var(--cream-deep); border-radius:8px; border:1.5px solid var(--line); word-break:break-all;" id="confirmEmailDisplay"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="purchaseBackBtn">Go back &amp; edit</button>
+        <button type="button" class="btn btn-orange" id="purchaseConfirmYesBtn">Yes, send it</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API_BASE = '/api/books';
+
+  // ============ LOGOUT BUTTON - Initialize FIRST ============
+  (function initLogoutBtn() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (!logoutBtn) {
+      console.error('ERROR: Logout button element not found!');
+      return;
+    }
+    
+    console.log('✓ Logout button element found, initializing...');
+    
+    // Completely remove and re-enable the button
+    logoutBtn.disabled = false;
+    logoutBtn.removeAttribute('disabled');
+    logoutBtn.setAttribute('type', 'button');
+    
+    // Force all styles
+    const styles = {
+      'display': 'inline-block',
+      'visibility': 'visible',
+      'cursor': 'pointer',
+      'pointer-events': 'auto',
+      'opacity': '1',
+      'z-index': '1000',
+      'background': 'transparent',
+      'border': '1.5px solid #D8CFC4',
+      'color': '#D8CFC4',
+      'padding': '7px 14px',
+      'font-size': '0.78rem',
+      'font-family': "'Inter', sans-serif",
+      'font-weight': '600',
+      'border-radius': '8px'
+    };
+    
+    Object.entries(styles).forEach(([key, value]) => {
+      logoutBtn.style.setProperty(key, value, 'important');
+    });
+    
+    console.log('✓ Logout button styled');
+    
+    // Add click handler
+    logoutBtn.addEventListener('click', handleLogout);
+    console.log('✓ Logout button click handler attached');
+  })();
+
+  async function handleLogout(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('>>> LOGOUT BUTTON CLICKED <<<');
+    
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.disabled = true;
+      logoutBtn.style.opacity = '0.5';
+      logoutBtn.style.cursor = 'not-allowed';
+    }
+    
+    try {
+      console.log('Sending POST request to /api/auth/logout...');
+      const res = await fetch('/api/auth/logout', { 
+        method: 'POST', 
+        cache: 'no-store',
+        credentials: 'include'
+      });
+      console.log(`✓ Logout response: ${res.status} ${res.statusText}`);
+      
+      if (res.ok) {
+        const body = await res.json();
+        console.log('✓ Logout successful:', body);
+      }
+    } catch (err) {
+      console.error('✗ Logout fetch error:', err.message);
+    }
+    
+    console.log('Redirecting to login page...');
+    window.location.replace('/login.html?t=' + Date.now());
+  }
+  // ============ END LOGOUT BUTTON INITIALIZATION ============
+
+  const shelf = document.getElementById('shelf');
+  const statusLine = document.getElementById('statusLine');
+  const overlay = document.getElementById('overlay');
+  const bookForm = document.getElementById('bookForm');
+  const modalTitle = document.getElementById('modalTitle');
+  const toast = document.getElementById('toast');
+  const genreFilter = document.getElementById('genreFilter');
+  const availFilter = document.getElementById('availFilter');
+  const searchInput = document.getElementById('search');
+
+  const purchaseOverlay = document.getElementById('purchaseOverlay');
+  const purchaseForm = document.getElementById('purchaseForm');
+  const purchaseTitle = document.getElementById('purchaseTitle');
+  const purchaseSub = document.getElementById('purchaseSub');
+  const purchaseStepDetails = document.getElementById('purchaseStepDetails');
+  const purchaseStepConfirmEmail = document.getElementById('purchaseStepConfirmEmail');
+  const confirmEmailDisplay = document.getElementById('confirmEmailDisplay');
+
+  let pendingPurchasePayload = null;
+
+  let allBooks = [];
+  let editingId = null;
+  let purchasingBook = null;
+
+  // Deterministic color per genre, so the same genre always gets the same spine color.
+  const GENRE_PALETTE = [
+    '#D2691E', '#7A9B76', '#5B7C99', '#A8527A', '#C1666B', '#8C7853', '#4F6D5C'
+  ];
+  function colorForGenre(genre) {
+    let hash = 0;
+    for (let i = 0; i < genre.length; i++) hash = (hash * 31 + genre.charCodeAt(i)) >>> 0;
+    return GENRE_PALETTE[hash % GENRE_PALETTE.length];
+  }
+
+  function showToast(message, type = 'default') {
+    toast.textContent = message;
+    toast.classList.remove('error', 'success');
+    if (type === 'error') toast.classList.add('error');
+    if (type === 'success') toast.classList.add('success');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  function setStatus(text, isError = false) {
+    statusLine.textContent = text;
+    statusLine.classList.toggle('error', isError);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  async function fetchBooks() {
+    setStatus('Loading shelf…');
+    try {
+      const res = await fetch(API_BASE, { cache: 'no-store' });
+      if (res.status === 401) {
+        window.location.replace('/login.html');
+        return;
+      }
+      if (!res.ok) throw new Error('Server responded with ' + res.status);
+      allBooks = await res.json();
+      populateGenreFilter();
+      renderShelf();
+      setStatus(`${allBooks.length} ${allBooks.length === 1 ? 'title' : 'titles'} on the shelf.`);
+    } catch (err) {
+      setStatus('Could not reach the library server.', true);
+      shelf.innerHTML = '';
+    }
+  }
+
+  function populateGenreFilter() {
+    const genres = [...new Set(allBooks.map(b => b.genre))].sort();
+    const current = genreFilter.value;
+    genreFilter.innerHTML = '<option value="">All genres</option>' +
+      genres.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+    genreFilter.value = current;
+  }
+
+  function renderShelf() {
+    const term = searchInput.value.trim().toLowerCase();
+    const genre = genreFilter.value;
+    const availOnly = availFilter.value === 'true';
+
+    const filtered = allBooks.filter(b => {
+      const matchesTerm = !term || b.title.toLowerCase().includes(term) || b.author.toLowerCase().includes(term);
+      const matchesGenre = !genre || b.genre === genre;
+      const matchesAvail = !availOnly || b.copies > 0;
+      return matchesTerm && matchesGenre && matchesAvail;
+    });
+
+    if (filtered.length === 0) {
+      shelf.innerHTML = `
+        <div class="empty-state">
+          <h2>The shelf is empty.</h2>
+          <p>Try clearing a filter, or add a new book.</p>
+        </div>`;
+      return;
+    }
+
+    shelf.innerHTML = filtered.map((b, index) => {
+      const inStock = b.copies > 0;
+      const spineColor = colorForGenre(b.genre);
+      const hasAgeLimit = b.minAge && b.minAge > 0;
+      return `
+      <div class="book-tile">
+        <div class="spine" style="background:${spineColor}">
+          <span class="num">#${index + 1}</span>
+          <span class="genre-label">${escapeHtml(b.genre)}</span>
+          ${hasAgeLimit ? `<span style="position:absolute; top:10px; right:14px; font-size:0.66rem; font-weight:700; color:rgba(255,255,255,0.92); background:rgba(0,0,0,0.28); padding:3px 8px; border-radius:100px;">Up to ${b.minAge}</span>` : ''}
+        </div>
+        <div class="tile-body">
+          <h3>${escapeHtml(b.title)}</h3>
+          <p class="author">${escapeHtml(b.author)}</p>
+          <span class="stock-badge ${inStock ? 'in-stock' : 'out-of-stock'}">
+            ${inStock ? b.copies + ' in stock' : 'Out of stock'}
+          </span>
+          <p class="tile-meta">Published ${b.publishedYear}</p>
+          <div class="tile-actions">
+            <button class="btn btn-orange" data-action="buy" data-id="${b.id}" ${inStock ? '' : 'disabled style="opacity:0.45;cursor:not-allowed"'}>Buy</button>
+          </div>
+          <div class="icon-btn-row">
+            <button class="small-link" data-action="edit" data-id="${b.id}">Edit</button>
+            <button class="small-link danger" data-action="delete" data-id="${b.id}">Remove</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- Add / Edit modal ----------
+
+  function openModal(book = null) {
+    bookForm.reset();
+    clearErrors(bookForm);
+    if (book) {
+      editingId = book.id;
+      modalTitle.textContent = 'Edit book';
+      document.getElementById('title').value = book.title;
+      document.getElementById('author').value = book.author;
+      document.getElementById('genre').value = book.genre;
+      document.getElementById('publishedYear').value = book.publishedYear;
+      document.getElementById('copies').value = book.copies;
+      document.getElementById('minAge').value = book.minAge || 0;
+    } else {
+      editingId = null;
+      modalTitle.textContent = 'Add a book';
+      document.getElementById('copies').value = 1;
+      document.getElementById('minAge').value = 0;
+    }
+    overlay.classList.add('open');
+    document.getElementById('title').focus();
+  }
+
+  function closeModal() { overlay.classList.remove('open'); }
+  function clearErrors(form) { form.querySelectorAll('.err').forEach(e => e.textContent = ''); }
+
+  function validateBook(data) {
+    const errors = {};
+    if (!data.title.trim()) errors.title = 'Title is required.';
+    if (!data.author.trim()) errors.author = 'Author is required.';
+    if (!data.genre.trim()) errors.genre = 'Genre is required.';
+    if (data.publishedYear === '' || Number(data.publishedYear) < 0) errors.publishedYear = 'Enter a valid year.';
+    if (data.copies === '' || Number(data.copies) < 0) errors.copies = 'Enter a valid copy count.';
+    if (data.minAge === '' || Number(data.minAge) < 0) errors.minAge = 'Enter a valid minimum age.';
+    return errors;
+  }
+
+  async function handleBookSubmit(e) {
+    e.preventDefault();
+    clearErrors(bookForm);
+
+    const data = {
+      title: document.getElementById('title').value,
+      author: document.getElementById('author').value,
+      genre: document.getElementById('genre').value,
+      publishedYear: document.getElementById('publishedYear').value,
+      copies: document.getElementById('copies').value,
+      minAge: document.getElementById('minAge').value
+    };
+
+    const errors = validateBook(data);
+    if (Object.keys(errors).length > 0) {
+      Object.entries(errors).forEach(([field, msg]) => {
+        document.getElementById('err-' + field).textContent = msg;
+      });
+      return;
+    }
+
+    const payload = {
+      ...data,
+      publishedYear: Number(data.publishedYear),
+      copies: Number(data.copies),
+      minAge: Number(data.minAge)
+    };
+    const isEdit = editingId !== null;
+    const url = isEdit ? `${API_BASE}/${editingId}` : API_BASE;
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (body && body.errors) {
+          Object.entries(body.errors).forEach(([field, msg]) => {
+            const el = document.getElementById('err-' + field);
+            if (el) el.textContent = msg;
+          });
+          return;
+        }
+        throw new Error('Save failed with status ' + res.status);
+      }
+
+      closeModal();
+      showToast(isEdit ? 'Book updated.' : 'Book added to the shelf.', 'success');
+      fetchBooks();
+    } catch (err) {
+      showToast('Could not save — check the server console.', 'error');
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Remove this book from the shelf? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) throw new Error('Delete failed with status ' + res.status);
+      showToast('Book removed.', 'success');
+      fetchBooks();
+    } catch (err) {
+      showToast('Could not remove — check the server console.', 'error');
+    }
+  }
+
+  // ---------- Purchase modal ----------
+
+  function showPurchaseStep(step) {
+    purchaseStepDetails.style.display = step === 'details' ? 'block' : 'none';
+    purchaseStepConfirmEmail.style.display = step === 'confirmEmail' ? 'block' : 'none';
+  }
+
+  function openPurchaseModal(book) {
+    purchasingBook = book;
+    pendingPurchasePayload = null;
+    purchaseForm.reset();
+    clearErrors(purchaseForm);
+    purchaseTitle.textContent = `Buy "${book.title}"`;
+    purchaseSub.textContent = `${book.copies} cop${book.copies === 1 ? 'y' : 'ies'} currently in stock. We'll ask you to confirm your email before sending the receipt.`;
+    document.getElementById('quantity').max = book.copies;
+    document.getElementById('quantity').value = 1;
+    showPurchaseStep('details');
+    purchaseOverlay.classList.add('open');
+    document.getElementById('buyerName').focus();
+  }
+
+  function closePurchaseModal() {
+    purchaseOverlay.classList.remove('open');
+    purchasingBook = null;
+    pendingPurchasePayload = null;
+    showPurchaseStep('details');
+  }
+
+  function validatePurchase(data, maxCopies) {
+    const errors = {};
+    if (!data.buyerName.trim()) errors.buyerName = 'Your name is required.';
+    if (!data.buyerEmail.trim()) errors.buyerEmail = 'Your email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.buyerEmail)) errors.buyerEmail = 'Enter a valid email address.';
+    const qty = Number(data.quantity);
+    if (!data.quantity || qty < 1) errors.quantity = 'Quantity must be at least 1.';
+    else if (qty > maxCopies) errors.quantity = `Only ${maxCopies} cop${maxCopies === 1 ? 'y' : 'ies'} available.`;
+    return errors;
+  }
+
+  // Step 1: validate the form, then move to the "confirm this email?" step
+  // instead of immediately purchasing.
+  function handlePurchaseDetailsSubmit(e) {
+    e.preventDefault();
+    clearErrors(purchaseForm);
+    if (!purchasingBook) return;
+
+    const data = {
+      buyerName: document.getElementById('buyerName').value,
+      buyerEmail: document.getElementById('buyerEmail').value,
+      quantity: document.getElementById('quantity').value
+    };
+
+    const errors = validatePurchase(data, purchasingBook.copies);
+    if (Object.keys(errors).length > 0) {
+      Object.entries(errors).forEach(([field, msg]) => {
+        document.getElementById('err-' + field).textContent = msg;
+      });
+      return;
+    }
+
+    pendingPurchasePayload = { ...data, quantity: Number(data.quantity) };
+    confirmEmailDisplay.textContent = data.buyerEmail;
+    showPurchaseStep('confirmEmail');
+  }
+
+  // Step 2: user said "Yes, send it" — now actually call the purchase API.
+  async function confirmAndSendPurchase() {
+    if (!purchasingBook || !pendingPurchasePayload) return;
+    const payload = pendingPurchasePayload;
+
+    try {
+      const res = await fetch(`${API_BASE}/${purchasingBook.id}/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        showPurchaseStep('details');
+        if (body && body.errors) {
+          Object.entries(body.errors).forEach(([field, msg]) => {
+            const el = document.getElementById('err-' + field);
+            if (el) el.textContent = msg;
+          });
+          return;
+        }
+        if (body && body.message) {
+          showToast(body.message, 'error');
+          return;
+        }
+        throw new Error('Purchase failed with status ' + res.status);
+      }
+
+      closePurchaseModal();
+      showToast(`Purchase confirmed — check ${payload.buyerEmail} for your receipt.`, 'success');
+      fetchBooks();
+    } catch (err) {
+      showPurchaseStep('details');
+      showToast('Could not complete purchase — check the server console.', 'error');
+    }
+  }
+
+  // ---------- Event wiring ----------
+
+  shelf.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn || btn.disabled) return;
+    const id = Number(btn.dataset.id);
+    const book = allBooks.find(b => b.id === id);
+    if (!book) return;
+
+    if (btn.dataset.action === 'edit') openModal(book);
+    else if (btn.dataset.action === 'delete') handleDelete(id);
+    else if (btn.dataset.action === 'buy') openPurchaseModal(book);
+  });
+
+  document.getElementById('addBtn').addEventListener('click', () => openModal());
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  document.getElementById('refreshBtn').addEventListener('click', fetchBooks);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+  document.getElementById('purchaseCancelBtn').addEventListener('click', closePurchaseModal);
+  document.getElementById('purchaseBackBtn').addEventListener('click', () => showPurchaseStep('details'));
+  document.getElementById('purchaseConfirmYesBtn').addEventListener('click', confirmAndSendPurchase);
+  purchaseOverlay.addEventListener('click', (e) => { if (e.target === purchaseOverlay) closePurchaseModal(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (overlay.classList.contains('open')) closeModal();
+    if (purchaseOverlay.classList.contains('open')) closePurchaseModal();
+  });
+
+  bookForm.addEventListener('submit', handleBookSubmit);
+  purchaseForm.addEventListener('submit', handlePurchaseDetailsSubmit);
+  searchInput.addEventListener('input', renderShelf);
+  genreFilter.addEventListener('change', renderShelf);
+  availFilter.addEventListener('change', renderShelf);
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      if (!res.ok) return;
+      const user = await res.json();
+      document.getElementById('userGreeting').textContent = `Hi, ${user.name}`;
+    } catch (err) {
+      // Not critical if this fails — the page still works without the greeting.
+    }
+  }
+
+  loadCurrentUser();
+  fetchBooks();
+
+  // Extra safety net: if this page is ever restored from the back/forward
+  // cache (e.g. via the browser's back button), force a real reload so the
+  // server gets a chance to redirect to login if the session is gone.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</body>
+</html>
