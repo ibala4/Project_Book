@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>FreshMart</title>
+<script>
+  // Runs immediately, before the rest of the page renders, even if this
+  // HTML shell itself was served from a stale browser cache. Makes a live,
+  // uncached request to check login status and bounces to login right away
+  // if the session is actually gone.
+  (function() {
+    fetch('/api/auth/me', { cache: 'no-store' }).then(function(res) {
+      if (res.status === 401) {
+        window.location.replace('/login.html');
+      }
+    }).catch(function() {});
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #0B6E4F;
+    --green-dark: #08533C;
+    --green-bg: #EAF6F0;
+    --amber: #F5A623;
+    --amber-dark: #D6890E;
+    --ink: #1F2A24;
+    --ink-soft: #5B6A62;
+    --rose: #D6483F;
+    --rose-bg: #FCEAE8;
+    --line: #E3E9E5;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #F7FAF8;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 90px;
+  }
+  .poppins { font-family: 'Poppins', sans-serif; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    background: var(--green);
+    color: #fff;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+  .brand h1 { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.2rem; margin: 0; }
+  .topbar .right { display: flex; align-items: center; gap: 14px; }
+  .topbar .greeting { font-size: 0.84rem; color: rgba(255,255,255,0.85); }
+  .logout-btn {
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.78rem;
+    padding: 7px 14px; background: transparent; border: 1.5px solid rgba(255,255,255,0.5);
+    color: #fff; border-radius: 8px; cursor: pointer;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,0.12); }
+
+  /* ---------- Search + categories ---------- */
+  .search-row { padding: 18px 28px 0; }
+  .search-row input {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 13px 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+  }
+  .search-row input:focus { outline: none; border-color: var(--green); }
+
+  .category-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 16px 28px;
+    scrollbar-width: none;
+  }
+  .category-row::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 9px 18px;
+    border-radius: 100px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink-soft);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s ease;
+  }
+  .chip.active { background: var(--green); border-color: var(--green); color: #fff; }
+  .chip:hover:not(.active) { border-color: var(--green); color: var(--green); }
+
+  .status-line { padding: 0 28px 12px; font-size: 0.8rem; color: var(--ink-soft); }
+  .status-line.error { color: var(--rose); font-weight: 500; }
+
+  /* ---------- Product grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 18px;
+    padding: 0 28px 40px;
+  }
+
+  .product-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .product-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(11,110,79,0.1); }
+
+  .product-icon {
+    width: 100%;
+    height: 90px;
+    background: var(--green-bg);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .out-tag {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: var(--rose);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+  }
+
+  .product-card h3 { font-size: 0.92rem; font-weight: 600; margin: 0 0 2px; }
+  .product-card .unit { font-size: 0.74rem; color: var(--ink-soft); margin: 0 0 10px; }
+  .product-card .price-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 12px; }
+  .product-card .price { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--green-dark); }
+  .product-card .price::before { content: "₹"; font-size: 0.85em; margin-right: 1px; }
+
+  .add-row { margin-top: auto; }
+  .add-btn {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.84rem;
+    padding: 9px 0;
+    border: 1.5px solid var(--green);
+    background: #fff;
+    color: var(--green);
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  .add-btn:hover { background: var(--green); color: #fff; }
+  .add-btn:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--line); color: var(--ink-soft); }
+
+  .qty-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1.5px solid var(--green);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .qty-stepper button {
+    background: var(--green-bg);
+    border: none;
+    width: 34px; height: 34px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--green-dark);
+    cursor: pointer;
+  }
+  .qty-stepper button:hover { background: var(--green); color: #fff; }
+  .qty-stepper .qty-value { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 0.9rem; }
+
+  .empty-state { grid-column: 1 / -1; text-align: center; padding: 70px 20px; color: var(--ink-soft); }
+  .empty-state h2 { font-family: 'Poppins', sans-serif; font-size: 1.1rem; color: var(--ink); margin: 0 0 6px; }
+
+  /* ---------- Floating cart button ---------- */
+  .cart-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--amber);
+    color: var(--ink);
+    border: none;
+    border-radius: 100px;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+    box-shadow: 0 10px 28px rgba(245,166,35,0.4);
+    cursor: pointer;
+    z-index: 30;
+    transition: transform 0.12s ease;
+  }
+  .cart-fab:hover { transform: translateY(-2px); background: var(--amber-dark); }
+  .cart-fab .count {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+  }
+
+  /* ---------- Cart drawer ---------- */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(31,42,36,0.45);
+    display: none;
+    z-index: 100;
+  }
+  .drawer-overlay.open { display: block; }
+
+  .drawer {
+    position: fixed;
+    top: 0; right: 0;
+    height: 100vh;
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    box-shadow: -8px 0 30px rgba(0,0,0,0.15);
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .drawer-header h2 { font-family: 'Poppins', sans-serif; font-size: 1.15rem; margin: 0; }
+  .drawer-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--ink-soft); line-height: 1; }
+
+  .drawer-items { flex: 1; overflow-y: auto; padding: 16px 24px; }
+  .cart-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .cart-item .icon { font-size: 1.8rem; width: 44px; text-align: center; }
+  .cart-item .info { flex: 1; }
+  .cart-item .info h4 { font-size: 0.88rem; font-weight: 600; margin: 0 0 2px; }
+  .cart-item .info .line-price { font-size: 0.78rem; color: var(--ink-soft); }
+  .cart-item .qty-stepper { width: 96px; }
+  .cart-item .qty-stepper button { width: 28px; height: 28px; }
+  .cart-item .remove-btn {
+    background: none; border: none; color: var(--rose); font-size: 0.74rem;
+    font-weight: 600; cursor: pointer; padding: 4px;
+  }
+
+  .drawer-empty { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+  .drawer-empty .big-icon { font-size: 2.4rem; margin-bottom: 10px; }
+
+  .drawer-footer { padding: 20px 24px; border-top: 1px solid var(--line); }
+  .drawer-footer .total-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 14px; font-family: 'Poppins', sans-serif;
+  }
+  .drawer-footer .total-row .label { font-size: 0.88rem; color: var(--ink-soft); font-weight: 500; }
+  .drawer-footer .total-row .amount { font-size: 1.25rem; font-weight: 700; color: var(--green-dark); }
+  .drawer-footer .amount::before { content: "₹"; font-size: 0.8em; }
+
+  .checkout-btn {
+    width: 100%;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 14px 0;
+    border: none;
+    border-radius: 11px;
+    background: var(--green);
+    color: #fff;
+    cursor: pointer;
+  }
+  .checkout-btn:hover { background: var(--green-dark); }
+  .checkout-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .checkout-note { text-align: center; font-size: 0.74rem; color: var(--ink-soft); margin-top: 10px; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- Checkout modal ---------- */
+  .checkout-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(31,42,36,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    padding: 20px;
+  }
+  .checkout-overlay.open { display: flex; }
+
+  .checkout-modal {
+    background: #fff;
+    border-radius: 18px;
+    padding: 30px 28px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.25);
+  }
+  .checkout-modal h2 { font-size: 1.2rem; margin: 0 0 4px; }
+  .checkout-sub { font-size: 0.85rem; color: var(--ink-soft); margin: 0 0 18px; }
+
+  .payment-options { display: flex; gap: 10px; margin-bottom: 20px; }
+  .payment-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 8px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .payment-option:hover { border-color: var(--green); background: var(--green-bg); }
+  .payment-option .po-icon { font-size: 1.6rem; }
+  .payment-option .po-label { font-size: 0.8rem; font-weight: 600; color: var(--ink); }
+
+  .btn-outline-full {
+    width: 100%;
+    margin-top: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 11px 0;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink-soft);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .btn-outline-full:hover { border-color: var(--ink-soft); color: var(--ink); }
+
+  .receipt-check {
+    width: 56px; height: 56px;
+    background: var(--green-bg);
+    color: var(--green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin: 0 auto 14px;
+  }
+
+  .receipt-box {
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.84rem;
+  }
+  .receipt-row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .receipt-head { font-weight: 700; padding-bottom: 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; color: var(--ink-soft); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.4px; }
+  .receipt-total { font-weight: 700; font-size: 0.95rem; color: var(--green-dark); border-top: 1px solid var(--line); margin-top: 8px; padding-top: 10px; }
+  .receipt-method { color: var(--ink-soft); font-size: 0.8rem; }
+  .receipt-item-row { display: flex; justify-content: space-between; padding: 3px 0; color: var(--ink); }
+
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+  @media (max-width: 600px) {
+    .topbar, .search-row, .category-row, .grid, .status-line { padding-left: 16px; padding-right: 16px; }
+    .drawer { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">🛒</div>
+    <h1>FreshMart</h1>
+  </div>
+  <div class="right">
+    <span class="greeting" id="userGreeting"></span>
+    <button class="logout-btn" id="logoutBtn">Log out</button>
+  </div>
+</div>
+
+<div class="search-row">
+  <input type="text" id="search" placeholder="Search for products…" autocomplete="off">
+</div>
+
+<div class="category-row" id="categoryRow">
+  <button class="chip active" data-category="">All</button>
+</div>
+
+<div class="status-line" id="statusLine">Loading products…</div>
+
+<div class="grid" id="grid"></div>
+
+<button class="cart-fab" id="cartFab">
+  🛍️ Cart <span class="count" id="cartCount">0</span>
+</button>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <h2 class="poppins">Your cart</h2>
+    <button class="drawer-close" id="drawerCloseBtn">&times;</button>
+  </div>
+  <div class="drawer-items" id="drawerItems"></div>
+  <div class="drawer-footer" id="drawerFooter" style="display:none;">
+    <div class="total-row">
+      <span class="label">Total</span>
+      <span class="amount" id="cartTotal">0</span>
+    </div>
+    <button class="checkout-btn" id="checkoutBtn">Checkout</button>
+    <p class="checkout-note">This is a demo — checkout doesn't process real payments.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Checkout modal -->
+<div class="checkout-overlay" id="checkoutOverlay">
+  <div class="checkout-modal">
+
+    <!-- Step 1: choose payment method -->
+    <div id="checkoutStepMethod">
+      <h2 class="poppins">Choose payment method</h2>
+      <p class="checkout-sub">Total: <strong id="methodTotal">₹0.00</strong></p>
+
+      <div class="payment-options">
+        <button class="payment-option" data-method="cash">
+          <span class="po-icon">💵</span>
+          <span class="po-label">Cash</span>
+        </button>
+        <button class="payment-option" data-method="card">
+          <span class="po-icon">💳</span>
+          <span class="po-label">Card</span>
+        </button>
+        <button class="payment-option" data-method="giftcard">
+          <span class="po-icon">🎁</span>
+          <span class="po-label">Gift Card</span>
+        </button>
+      </div>
+
+      <button type="button" class="btn-outline-full" id="checkoutCancelBtn">Cancel</button>
+    </div>
+
+    <!-- Step 2a: card details (demo only, never stored) -->
+    <div id="checkoutStepCard" style="display:none;">
+      <h2 class="poppins">Card details</h2>
+      <p class="checkout-sub">This is a demo — no real card is charged, and nothing is saved.</p>
+
+      <div class="field">
+        <label for="cardNumber">Card number</label>
+        <input type="text" id="cardNumber" placeholder="4242 4242 4242 4242" maxlength="19" autocomplete="off">
+        <div class="err" id="err-cardNumber"></div>
+      </div>
+      <div style="display:flex; gap:12px;">
+        <div class="field" style="flex:1;">
+          <label for="cardExpiry">Expiry (MM/YY)</label>
+          <input type="text" id="cardExpiry" placeholder="12/29" maxlength="5" autocomplete="off">
+          <div class="err" id="err-cardExpiry"></div>
+        </div>
+        <div class="field" style="flex:1;">
+          <label for="cardCvv">CVV</label>
+          <input type="text" id="cardCvv" placeholder="123" maxlength="3" autocomplete="off">
+          <div class="err" id="err-cardCvv"></div>
+        </div>
+      </div>
+
+      <button type="button" class="checkout-btn" id="cardPayBtn">Pay now</button>
+      <button type="button" class="btn-outline-full" id="cardBackBtn">Back</button>
+    </div>
+
+    <!-- Step 2b: gift card code -->
+    <div id="checkoutStepGiftcard" style="display:none;">
+      <h2 class="poppins">Gift card</h2>
+      <p class="checkout-sub">This is a demo — any code is accepted.</p>
+
+      <div class="field">
+        <label for="giftcardCode">Gift card code</label>
+        <input type="text" id="giftcardCode" placeholder="GIFT-XXXX-XXXX" autocomplete="off">
+        <div class="err" id="err-giftcardCode"></div>
+      </div>
+
+      <button type="button" class="checkout-btn" id="giftcardPayBtn">Redeem &amp; pay</button>
+      <button type="button" class="btn-outline-full" id="giftcardBackBtn">Back</button>
+    </div>
+
+    <!-- Step 3: receipt + thank you -->
+    <div id="checkoutStepReceipt" style="display:none;">
+      <div class="receipt-check">✓</div>
+      <h2 class="poppins" style="text-align:center;">Thank you for your purchase!</h2>
+      <p class="checkout-sub" style="text-align:center;">Your order has been placed successfully.</p>
+
+      <div class="receipt-box">
+        <div class="receipt-row receipt-head">
+          <span>FreshMart Receipt</span>
+          <span id="receiptDate"></span>
+        </div>
+        <div id="receiptItems"></div>
+        <div class="receipt-row receipt-total">
+          <span>Total Paid</span>
+          <span id="receiptTotal">₹0.00</span>
+        </div>
+        <div class="receipt-row receipt-method">
+          <span>Payment method</span>
+          <span id="receiptMethod"></span>
+        </div>
+      </div>
+
+      <p class="checkout-sub" style="text-align:center; margin-top:14px;">You'll be logged out in a moment…</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const PRODUCTS_API = '/api/products';
+
+  const grid = document.getElementById('grid');
+  const statusLine = document.getElementById('statusLine');
+  const categoryRow = document.getElementById('categoryRow');
+  const searchInput = document.getElementById('search');
+  const cartFab = document.getElementById('cartFab');
+  const cartCount = document.getElementById('cartCount');
+  const drawer = document.getElementById('drawer');
+  const drawerOverlay = document.getElementById('drawerOverlay');
+  const drawerItems = document.getElementById('drawerItems');
+  const drawerFooter = document.getElementById('drawerFooter');
+  const cartTotal = document.getElementById('cartTotal');
+  const toast = document.getElementById('toast');
+
+  let allProducts = [];
+  let activeCategory = '';
+  // cart: { [productId]: quantity }
+  let cart = {};
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function setStatus(text, isError = false) {
+    statusLine.textContent = text;
+    statusLine.classList.toggle('error', isError);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  async function fetchProducts() {
+    setStatus('Loading products…');
+    try {
+      const res = await fetch(PRODUCTS_API, { cache: 'no-store' });
+      if (res.status === 401) { window.location.replace('/login.html'); return; }
+      if (!res.ok) throw new Error('Server responded with ' + res.status);
+      allProducts = await res.json();
+      populateCategories();
+      renderGrid();
+      setStatus(`${allProducts.length} products available.`);
+    } catch (err) {
+      setStatus('Could not reach the store server.', true);
+      grid.innerHTML = '';
+    }
+  }
+
+  function populateCategories() {
+    const categories = [...new Set(allProducts.map(p => p.category))].sort();
+    categoryRow.innerHTML = '<button class="chip active" data-category="">All</button>' +
+      categories.map(c => `<button class="chip" data-category="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
+
+    categoryRow.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        activeCategory = chip.dataset.category;
+        categoryRow.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        renderGrid();
+      });
+    });
+  }
+
+  function renderGrid() {
+    const term = searchInput.value.trim().toLowerCase();
+    const filtered = allProducts.filter(p => {
+      const matchesTerm = !term || p.name.toLowerCase().includes(term);
+      const matchesCategory = !activeCategory || p.category === activeCategory;
+      return matchesTerm && matchesCategory;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><h2>No products match</h2><p>Try a different search or category.</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(p => {
+      const inStock = p.stock > 0;
+      const qty = cart[p.id] || 0;
+      return `
+      <div class="product-card">
+        <div class="product-icon">
+          ${p.icon || '🛒'}
+          ${!inStock ? '<span class="out-tag">Out of stock</span>' : ''}
+        </div>
+        <h3>${escapeHtml(p.name)}</h3>
+        <p class="unit">${escapeHtml(p.unit)}</p>
+        <div class="price-row"><span class="price">${p.price.toFixed(2)}</span></div>
+        <div class="add-row">
+          ${qty > 0
+            ? `<div class="qty-stepper" data-id="${p.id}">
+                 <button data-action="decrement">−</button>
+                 <span class="qty-value">${qty}</span>
+                 <button data-action="increment">+</button>
+               </div>`
+            : `<button class="add-btn" data-id="${p.id}" data-action="add" ${inStock ? '' : 'disabled'}>${inStock ? 'Add to cart' : 'Unavailable'}</button>`
+          }
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function addToCart(productId) {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product || product.stock <= 0) return;
+    cart[productId] = 1;
+    renderGrid();
+    renderCart();
+    showToast(`${product.name} added to cart`);
+  }
+
+  function changeQty(productId, delta) {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) return;
+    const newQty = (cart[productId] || 0) + delta;
+
+    if (newQty <= 0) {
+      delete cart[productId];
+    } else if (newQty > product.stock) {
+      showToast(`Only ${product.stock} in stock`);
+      return;
+    } else {
+      cart[productId] = newQty;
+    }
+    renderGrid();
+    renderCart();
+  }
+
+  grid.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('button[data-action="add"]');
+    if (addBtn) {
+      addToCart(Number(addBtn.dataset.id));
+      return;
+    }
+    const stepperBtn = e.target.closest('.qty-stepper button');
+    if (stepperBtn) {
+      const id = Number(stepperBtn.closest('.qty-stepper').dataset.id);
+      const delta = stepperBtn.dataset.action === 'increment' ? 1 : -1;
+      changeQty(id, delta);
+    }
+  });
+
+  function renderCart() {
+    const entries = Object.entries(cart);
+    const totalItems = entries.reduce((sum, [, qty]) => sum + qty, 0);
+    cartCount.textContent = totalItems;
+
+    if (entries.length === 0) {
+      drawerItems.innerHTML = `<div class="drawer-empty"><div class="big-icon">🛒</div><p>Your cart is empty.</p></div>`;
+      drawerFooter.style.display = 'none';
+      return;
+    }
+
+    let total = 0;
+    drawerItems.innerHTML = entries.map(([idStr, qty]) => {
+      const id = Number(idStr);
+      const product = allProducts.find(p => p.id === id);
+      if (!product) return '';
+      const lineTotal = product.price * qty;
+      total += lineTotal;
+      return `
+        <div class="cart-item">
+          <div class="icon">${product.icon || '🛒'}</div>
+          <div class="info">
+            <h4>${escapeHtml(product.name)}</h4>
+            <div class="line-price">₹${product.price.toFixed(2)} × ${qty} = ₹${lineTotal.toFixed(2)}</div>
+          </div>
+          <div class="qty-stepper" data-id="${id}">
+            <button data-action="decrement">−</button>
+            <span class="qty-value">${qty}</span>
+            <button data-action="increment">+</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    cartTotal.textContent = total.toFixed(2);
+    drawerFooter.style.display = 'block';
+  }
+
+  drawerItems.addEventListener('click', (e) => {
+    const stepperBtn = e.target.closest('.qty-stepper button');
+    if (!stepperBtn) return;
+    const id = Number(stepperBtn.closest('.qty-stepper').dataset.id);
+    const delta = stepperBtn.dataset.action === 'increment' ? 1 : -1;
+    changeQty(id, delta);
+  });
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    drawerOverlay.classList.add('open');
+  }
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    drawerOverlay.classList.remove('open');
+  }
+
+  cartFab.addEventListener('click', openDrawer);
+  document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
+  drawerOverlay.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+  // ---------- Checkout flow ----------
+  const checkoutOverlay = document.getElementById('checkoutOverlay');
+  const stepMethod = document.getElementById('checkoutStepMethod');
+  const stepCard = document.getElementById('checkoutStepCard');
+  const stepGiftcard = document.getElementById('checkoutStepGiftcard');
+  const stepReceipt = document.getElementById('checkoutStepReceipt');
+
+  function showCheckoutStep(step) {
+    stepMethod.style.display = step === 'method' ? 'block' : 'none';
+    stepCard.style.display = step === 'card' ? 'block' : 'none';
+    stepGiftcard.style.display = step === 'giftcard' ? 'block' : 'none';
+    stepReceipt.style.display = step === 'receipt' ? 'block' : 'none';
+  }
+
+  function openCheckout() {
+    const entries = Object.entries(cart);
+    if (entries.length === 0) return;
+    const total = entries.reduce((sum, [id, qty]) => {
+      const p = allProducts.find(p => p.id === Number(id));
+      return sum + (p ? p.price * qty : 0);
+    }, 0);
+    document.getElementById('methodTotal').textContent = '₹' + total.toFixed(2);
+    showCheckoutStep('method');
+    checkoutOverlay.classList.add('open');
+  }
+
+  function closeCheckout() {
+    checkoutOverlay.classList.remove('open');
+  }
+
+  document.getElementById('checkoutBtn').addEventListener('click', openCheckout);
+  document.getElementById('checkoutCancelBtn').addEventListener('click', closeCheckout);
+
+  // Payment method selection
+  document.querySelectorAll('.payment-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const method = btn.dataset.method;
+      if (method === 'cash') {
+        completeOrder('Cash');
+      } else if (method === 'card') {
+        clearCheckoutErrors();
+        showCheckoutStep('card');
+      } else if (method === 'giftcard') {
+        clearCheckoutErrors();
+        showCheckoutStep('giftcard');
+      }
+    });
+  });
+
+  document.getElementById('cardBackBtn').addEventListener('click', () => showCheckoutStep('method'));
+  document.getElementById('giftcardBackBtn').addEventListener('click', () => showCheckoutStep('method'));
+
+  function clearCheckoutErrors() {
+    document.querySelectorAll('#checkoutOverlay .err').forEach(e => e.textContent = '');
+  }
+
+  // Card payment — demo only. Light format checks just to feel real;
+  // nothing is validated against a real payment network, and the values
+  // are never sent to the server or stored anywhere.
+  document.getElementById('cardPayBtn').addEventListener('click', () => {
+    clearCheckoutErrors();
+    const number = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const expiry = document.getElementById('cardExpiry').value.trim();
+    const cvv = document.getElementById('cardCvv').value.trim();
+
+    let hasError = false;
+    if (!/^\d{13,19}$/.test(number)) {
+      document.getElementById('err-cardNumber').textContent = 'Enter a valid card number.';
+      hasError = true;
+    }
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) {
+      document.getElementById('err-cardExpiry').textContent = 'Use MM/YY format.';
+      hasError = true;
+    }
+    if (!/^\d{3,4}$/.test(cvv)) {
+      document.getElementById('err-cardCvv').textContent = 'Enter a valid CVV.';
+      hasError = true;
+    }
+    if (hasError) return;
+
+    // Clear the fields immediately — this demo never needs to remember them.
+    document.getElementById('cardNumber').value = '';
+    document.getElementById('cardExpiry').value = '';
+    document.getElementById('cardCvv').value = '';
+
+    completeOrder('Card ending in ' + number.slice(-4));
+  });
+
+  document.getElementById('giftcardPayBtn').addEventListener('click', () => {
+    clearCheckoutErrors();
+    const code = document.getElementById('giftcardCode').value.trim();
+    if (!code) {
+      document.getElementById('err-giftcardCode').textContent = 'Enter a gift card code.';
+      return;
+    }
+    document.getElementById('giftcardCode').value = '';
+    completeOrder('Gift Card');
+  });
+
+  function completeOrder(methodLabel) {
+    const entries = Object.entries(cart);
+    let total = 0;
+
+    const itemsHtml = entries.map(([idStr, qty]) => {
+      const id = Number(idStr);
+      const product = allProducts.find(p => p.id === id);
+      if (!product) return '';
+      const lineTotal = product.price * qty;
+      total += lineTotal;
+      return `<div class="receipt-item-row"><span>${escapeHtml(product.name)} × ${qty}</span><span>₹${lineTotal.toFixed(2)}</span></div>`;
+    }).join('');
+
+    document.getElementById('receiptItems').innerHTML = itemsHtml;
+    document.getElementById('receiptTotal').textContent = '₹' + total.toFixed(2);
+    document.getElementById('receiptMethod').textContent = methodLabel;
+    document.getElementById('receiptDate').textContent = new Date().toLocaleString(undefined, {
+      dateStyle: 'medium', timeStyle: 'short'
+    });
+
+    showCheckoutStep('receipt');
+
+    // Clear the cart now that the "order" is placed.
+    cart = {};
+    renderCart();
+    renderGrid();
+
+    // Auto-logout a few seconds after showing the receipt, so the person
+    // has time to actually read the thank-you message and receipt first.
+    setTimeout(() => {
+      performLogout();
+    }, 3500);
+  }
+
+  // Logout is its own function so both the manual Logout button and the
+  // automatic post-checkout logout can reuse the exact same reliable logic:
+  // fetch() + wait for completion, then forcibly replace the page (not just
+  // change the URL) so there's no stale cache entry to fall back to.
+  async function performLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      // Even if the request fails, still navigate to login.
+    }
+    window.location.replace('/login.html?t=' + Date.now());
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', performLogout);
+
+  searchInput.addEventListener('input', renderGrid);
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      if (!res.ok) return;
+      const user = await res.json();
+      document.getElementById('userGreeting').textContent = `Hi, ${user.name}`;
+    } catch (err) {
+      // Not critical if this fails.
+    }
+  }
+
+  loadCurrentUser();
+  fetchProducts();
+
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Create account — FreshMart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #0B6E4F;
+    --green-dark: #08533C;
+    --green-bg: #EAF6F0;
+    --ink: #1F2A24;
+    --ink-soft: #5B6A62;
+    --rose: #D6483F;
+    --rose-bg: #FCEAE8;
+    --line: #E3E9E5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--green-bg);
+    font-family: 'Inter', sans-serif; color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; -webkit-font-smoothing: antialiased;
+  }
+  .card { background: #fff; border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px; box-shadow: 0 24px 60px rgba(11,110,79,0.12); }
+  .logo { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
+  .logo .mark { width: 36px; height: 36px; border-radius: 10px; background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+  .logo span { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.25rem; color: var(--green-dark); }
+  h1 { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1.5rem; margin: 0 0 4px; }
+  p.sub { color: var(--ink-soft); font-size: 0.88rem; margin: 0 0 24px; }
+
+  .field { margin-bottom: 15px; }
+  .field label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+  .field input { width: 100%; font-family: 'Inter', sans-serif; font-size: 0.92rem; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px; }
+  .field input:focus { outline: none; border-color: var(--green); }
+  .field .err { color: var(--rose); font-size: 0.74rem; margin-top: 4px; min-height: 14px; }
+
+  .btn { width: 100%; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 0.92rem; padding: 13px 0; border: none; border-radius: 10px; cursor: pointer; background: var(--green); color: #fff; margin-top: 6px; }
+  .btn:hover { background: var(--green-dark); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .alert { font-size: 0.84rem; padding: 10px 14px; border-radius: 10px; margin-bottom: 18px; display: none; }
+  .alert.show { display: block; }
+  .alert.error { background: var(--rose-bg); color: #9C2E27; }
+  .alert.success { background: var(--green-bg); color: var(--green-dark); }
+
+  .switch { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--ink-soft); }
+  .switch a { color: var(--green); font-weight: 600; text-decoration: none; }
+  .switch a:hover { text-decoration: underline; }
+
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="mark">🛒</div>
+    <span>FreshMart</span>
+  </div>
+  <h1>Create your account</h1>
+  <p class="sub">Sign up to start shopping.</p>
+
+  <div class="alert" id="alertBox"></div>
+
+  <form id="registerForm" novalidate>
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" required>
+      <div class="err" id="err-name"></div>
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+      <div class="err" id="err-email"></div>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" required minlength="6">
+      <div class="err" id="err-password"></div>
+    </div>
+    <div class="field">
+      <label for="confirmPassword">Confirm password</label>
+      <input type="password" id="confirmPassword" required minlength="6">
+      <div class="err" id="err-confirmPassword"></div>
+    </div>
+    <button type="submit" class="btn" id="submitBtn" disabled>Create account</button>
+  </form>
+
+  <p class="switch">Already have an account? <a href="/login.html">Log in</a></p>
+</div>
+
+<script>
+  const form = document.getElementById('registerForm');
+  const alertBox = document.getElementById('alertBox');
+  const submitBtn = document.getElementById('submitBtn');
+  const passwordInput = document.getElementById('password');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+
+  function showAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = 'alert show ' + type;
+  }
+  function clearErrors() {
+    document.querySelectorAll('.err').forEach(e => e.textContent = '');
+    alertBox.classList.remove('show');
+  }
+
+  function checkPasswordsMatch() {
+    const pwd = passwordInput.value;
+    const confirm = confirmPasswordInput.value;
+    const errEl = document.getElementById('err-confirmPassword');
+    if (confirm.length === 0) { errEl.textContent = ''; submitBtn.disabled = true; return; }
+    if (pwd !== confirm) { errEl.textContent = 'Passwords do not match.'; submitBtn.disabled = true; return; }
+    if (pwd.length < 6) { errEl.textContent = ''; submitBtn.disabled = true; return; }
+    errEl.textContent = '';
+    submitBtn.disabled = false;
+  }
+  passwordInput.addEventListener('input', checkPasswordsMatch);
+  confirmPasswordInput.addEventListener('input', checkPasswordsMatch);
+
+  function validate(data) {
+    const errors = {};
+    if (!data.name.trim()) errors.name = 'Name is required.';
+    if (!data.email.trim()) errors.email = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.email = 'Enter a valid email address.';
+    if (!data.password) errors.password = 'Password is required.';
+    else if (data.password.length < 6) errors.password = 'Password must be at least 6 characters.';
+    if (!data.confirmPassword) errors.confirmPassword = 'Please confirm your password.';
+    else if (data.password !== data.confirmPassword) errors.confirmPassword = 'Passwords do not match.';
+    return errors;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    const data = {
+      name: document.getElementById('name').value,
+      email: document.getElementById('email').value,
+      password: document.getElementById('password').value,
+      confirmPassword: document.getElementById('confirmPassword').value
+    };
+
+    const errors = validate(data);
+    if (Object.keys(errors).length > 0) {
+      Object.entries(errors).forEach(([field, msg]) => {
+        const el = document.getElementById('err-' + field);
+        if (el) el.textContent = msg;
+      });
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating account…';
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: data.name, email: data.email, password: data.password })
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (body && body.errors) {
+          Object.entries(body.errors).forEach(([field, msg]) => {
+            const el = document.getElementById('err-' + field);
+            if (el) el.textContent = msg;
+          });
+        } else {
+          showAlert(body && body.message ? body.message : 'Could not create account.', 'error');
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+        return;
+      }
+
+      showAlert('Account created! Redirecting to login…', 'success');
+      setTimeout(() => { window.location.href = '/login.html'; }, 1200);
+    } catch (err) {
+      showAlert('Something went wrong — check the server console.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create account';
+    }
+  });
+</script>
+</body>
+</html>

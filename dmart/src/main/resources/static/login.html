@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Log in — FreshMart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #0B6E4F;
+    --green-dark: #08533C;
+    --green-bg: #EAF6F0;
+    --amber: #F5A623;
+    --ink: #1F2A24;
+    --ink-soft: #5B6A62;
+    --rose: #D6483F;
+    --rose-bg: #FCEAE8;
+    --line: #E3E9E5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--green-bg);
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 24px 60px rgba(11,110,79,0.12);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .logo .mark {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+  .logo span {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--green-dark);
+  }
+  h1 { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1.5rem; margin: 0 0 4px; }
+  p.sub { color: var(--ink-soft); font-size: 0.88rem; margin: 0 0 26px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+  .field input {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 12px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+  }
+  .field input:focus { outline: none; border-color: var(--green); }
+
+  .btn {
+    width: 100%;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 13px 0;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: var(--green);
+    color: #fff;
+    margin-top: 6px;
+  }
+  .btn:hover { background: var(--green-dark); }
+
+  .alert {
+    background: var(--rose-bg);
+    color: #9C2E27;
+    font-size: 0.84rem;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 18px;
+    display: none;
+  }
+  .alert.show { display: block; }
+
+  .switch { text-align: center; margin-top: 22px; font-size: 0.85rem; color: var(--ink-soft); }
+  .switch a { color: var(--green); font-weight: 600; text-decoration: none; }
+  .switch a:hover { text-decoration: underline; }
+
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="mark">🛒</div>
+    <span>FreshMart</span>
+  </div>
+  <h1>Welcome back</h1>
+  <p class="sub">Log in to start shopping.</p>
+
+  <div class="alert" id="errorAlert">Incorrect email or password. Please try again.</div>
+
+  <form id="loginForm" method="post" action="/api/auth/login">
+    <div class="field">
+      <label for="username">Email</label>
+      <input type="email" id="username" name="username" required autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn">Log in</button>
+  </form>
+
+  <p class="switch">No account yet? <a href="/register.html">Create one</a></p>
+</div>
+
+<script>
+  if (new URLSearchParams(window.location.search).has('error')) {
+    document.getElementById('errorAlert').classList.add('show');
+  }
+
+  // Force a real reload if this page is ever restored from the browser's
+  // back/forward cache, so it never shows stale content after logout.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+</body>
+</html>

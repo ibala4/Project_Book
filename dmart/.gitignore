@@ -1,0 +1,19 @@
+# Build output
+/target/
+*.class
+
+# IDE files
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local-only secrets
+application-local.properties
+.env
